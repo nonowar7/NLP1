@@ -1,5 +1,6 @@
 from sklearn.feature_extraction.text import CountVectorizer
 import sys
+import string
 #import json
 #import numpy as np
 
@@ -28,7 +29,8 @@ class MLETrain:
                 f.write("%s\n" % entry)
 
     def keepOnlyTags(self, txt):
-        return ' '.join(w.split('/')[-1] for w in txt.split())
+        return ' '.join(w.rsplit('/', 1)[1] for w in txt.split())
+
 
     def getTransitions(self, train_data):
         vec = CountVectorizer(lowercase=False, ngram_range=(1, 3), preprocessor=self.keepOnlyTags)
@@ -43,11 +45,32 @@ class MLETrain:
         names = [s.replace('/', ' ') for s in names]
         return dict(zip(names, values))
 
+    def addSignatureWords(self):
+        suffixes = ['ed', 'ing', 'ness', 'ful', 'ion', 'less']
+        prefixes = ['Anti, dis, inter, pre, non, mis, trans, fore, mid']
+        signature_words = {}
+        for prefix in prefixes:
+            for k in self.emissions:
+                if k.startswith(prefix):
+                    entry = ' '.join([''.join(['^', prefix]), k.split()[-1]])
+                    if entry not in signature_words:
+                        signature_words[entry] = 0
+                    signature_words[entry] += self.emissions[k]
+        for suffix in suffixes:
+            for k in self.emissions:
+                if k.split()[0].endswith(suffix):
+                    entry = ' '.join([''.join(['~', suffix]), k.split()[-1]])
+                    if entry not in signature_words:
+                        signature_words[entry] = 0
+                    signature_words[entry] += self.emissions[k]
+        for word in signature_words:
+            self.emissions[word] = signature_words[word]
+
     def getQ(self, t1, t2, t3):
         lambdas = [0.9, 0.09, 0.01]
         try:
             return lambdas[0] * self.transitions[" ".join([t2, t1, t3])] / self.transitions[" ".join([t2, t1])] +\
-            lambdas[1] * self.transitions[" ".join([t1, t3])] / self.transitions[t1] +\
+                lambdas[1] * self.transitions[" ".join([t1, t3])] / self.transitions[t1] +\
                 lambdas[2] * self.transitions[t3] / sum(self.transitions.values())
         except:
             return 0
@@ -63,7 +86,7 @@ class MLETrain:
         train_data = self.readTaggedCorpus(data_file)
         self.transitions = self.getTransitions(train_data)
         self.emissions = self.getEmissions(train_data)
-        # add word signatures to emissions
+        self.addSignatureWords()
         self.writeDictToFile(q_file, self.transitions)
         self.writeDictToFile(e_file, self.emissions)
 
