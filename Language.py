@@ -6,6 +6,20 @@
 import numpy as np
 #import string
 
+def getCloseClassPOS(emissions):
+    POS = {}
+    prepositions = ["in", "to", "for", "In"]
+    conjunctions = ["and", "or", "but"]
+    determiners = ["the", "a", "an"]
+    close_groups = [prepositions, conjunctions, determiners]
+    for entry in emissions:
+        word, tag = entry.split()[0], entry.split()[-1]
+        for group in close_groups:
+            if word in group and emissions[entry] > 50:
+                if tag not in POS:
+                    POS[tag] = 0
+
+    return POS
 
 def getOpenClassPOS():
     # verbs, noun, adjectives, adverbs
@@ -59,3 +73,6 @@ def startWithCapitalLower(word):
     if len(word) > 1 and str(word[0]).isupper() and str(word[1]).islower():
         return True
     return False
+
+
+

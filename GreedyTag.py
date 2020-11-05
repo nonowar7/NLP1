@@ -92,7 +92,6 @@ class GreedyTag:
         if prob_w_t > 0:
             return prob_w_t
         return sys.float_info.epsilon
-        # handle as an unknown word
 
     def getUnknownScore(self, w, t):
         w = w.split('_UNK_')[-1]
