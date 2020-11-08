@@ -9,8 +9,7 @@ class HMMTag:
     def __init__(self):
         self.emissions = {}
         self.transitions = {}
-        self.start_signatures = {}
-        self.end_signatures = {}
+        self.signatures = {}
         self.emissions_prob = {}
         self.transitions_prob = {}
         self.patterns_prob = {}
@@ -65,12 +64,8 @@ class HMMTag:
                 if word not in self.knownWords:
                     self.knownWords[word] = []
                 self.knownWords[word].append(tag)
-            key = entry[1:]
-            sign, signature_tag = key[0], key[1:]
-            if sign == '^':
-                self.start_signatures[signature_tag] = self.emissions[entry]
-            if sign == '~':
-                self.end_signatures[signature_tag] = self.emissions[entry]
+            else:
+                self.signatures[entry[1:]] = self.emissions[entry]
 
     def getAllTags(self):
         for entry in self.transitions:
@@ -80,7 +75,6 @@ class HMMTag:
             if tags[-1] not in self.all_tags:
                 self.all_tags[tags[-1]] = 0
             self.all_tags[tags[-1]] += self.transitions[entry]
-
 
     def calculateKnownProbabilities(self):
         for t in self.all_tags:
@@ -98,28 +92,17 @@ class HMMTag:
                     self.transitions_prob[(t1, t2, t3)] = (lambdas[0] * first_prob / (second_prob + epsilon)) + \
                            (lambdas[1] * second_prob / (third_prob + epsilon)) + \
                            (lambdas[2] * third_prob / sum(self.all_tags.values()))
-        for pattern in self.end_signatures:
-            tag = pattern.split()[-1]
-            self.patterns_prob[pattern] = self.end_signatures.get(pattern, 0) / self.transitions[tag]
-        for pattern in self.start_signatures:
-            tag = pattern.split()[-1]
-            self.patterns_prob[pattern] = self.start_signatures.get(pattern, 0) / self.transitions[tag]
+        for pattern in self.signatures:
+            pat = pattern.split()
+            self.emissions_prob[(pat[0], pat[1])] = self.signatures.get(pattern, 0) / self.transitions[pat[1]]
+            #self.patterns_prob[pattern] = self.signatures.get(pattern, 0) / self.transitions[tag]
 
     def getQ(self, prev_prev_t, prev_t, t):
         return self.transitions_prob[(prev_prev_t, prev_t, t)]
 
     def getE(self, w, t):
         # since tag_list is taken from training, transitions[t] is never 0
-        w_t = (w, t)
-        if w in self.knownWords:
-            return max(self.emissions_prob[w_t], sys.float_info.epsilon)
-        '''
-        for pattern in self.patterns_prob:
-            pat, tag = pattern.split()[0], pattern.split()[-1]
-            if tag == t and w.startswith(pat) or w.endswith(pat):
-                return max(self.patterns_prob[pattern], sys.float_info.epsilon)
-        '''
-        return sys.float_info.epsilon
+        return max(self.emissions_prob.get((w, t), 0), sys.float_info.epsilon)
 
     # start start 'all tags'
     # start 'all tags' 'all tags'
@@ -134,11 +117,12 @@ class HMMTag:
 
     def ungrammaticalTagsSequences(self):
         self.close_group = Language.getCloseClassPOS(self.emissions)
-        for tag in self.all_tags:
-            for prev_tag in self.all_tags:
-                for prev_prev_tag in self.all_tags:
-                    if prev_prev_tag == prev_tag == tag and tag in self.close_group:
-                        self.unallowedTagsSequences[(prev_prev_tag, prev_tag, tag)] = 1
+        tags = self.all_tags.copy()
+        tags.pop('START')
+        for tag in tags:
+            for prev_tag in tags:
+                if prev_tag ==tag and tag in self.close_group:
+                    self.unallowedTagsSequences[(prev_tag, tag)] = 1
 
     def initializeViterbiDicts(self):
         P = {(0, 'START', 'START'): 0}
@@ -150,26 +134,19 @@ class HMMTag:
                 P[(0, t1, t2)] = float('-inf')
         return P, T
 
-    def viterbiAlgorithm(self, sequence):
-        words = sequence.split()
+    def viterbiAlgorithm(self, words):
         N = len(words)
         P, T = self.initializeViterbiDicts()
-        # around 5 seconds
         for i in range(1, N+1):
             word = words[i-1]
-            # around 0.12 second
             tags = self.possibleTags(i, word)
             for tag in tags:
                 prev_tags = self.possibleTags(i-1)
-                # around 0.002 second
                 for prev_tag in prev_tags:
                     best_prob = float('-inf')
                     best_tag = None
                     prev_prev_tags = self.possibleTags(i-2)
-                    # around 0.00005 sec
                     for prev_prev_tag in prev_prev_tags:
-                        if (prev_prev_tag, prev_tag, tag) in self.unallowedTagsSequences:
-                            continue
                         this_prob = P.get((i-1,prev_prev_tag,prev_tag), float('-inf'))\
                                     + math.log(self.getE(word, tag))\
                                     + math.log(self.getQ(prev_prev_tag, prev_tag, tag))
@@ -208,6 +185,15 @@ class HMMTag:
                 count += 1
         print(good/count)
 
+    def replaceWithSignatures(self, words):
+        sequence = []
+        for word in words:
+            if word not in self.knownWords:
+                sequence.append(Language.replaceRareWords(word))
+            else:
+                sequence.append(word)
+        return sequence
+
     def runTagger(self):
         a = time.time()
         file_name, q_file, e_file, greedy_output_file, extra_file = hmmTagger.readParameters(VALID_PARAMETERS_NUMBER)
@@ -216,17 +202,18 @@ class HMMTag:
         self.getSignaturesAndUnknown()
         self.getAllTags()
         self.ungrammaticalTagsSequences()
-        print(self.unallowedTagsSequences)
         self.calculateKnownProbabilities()
         self.inputs = self.readInputFile(file_name)
         for i , input in enumerate(self.inputs):
             if i%100 == 0:
                 print(time.time() - a)
-            tags_sequence = self.viterbiAlgorithm(input)
+            words = input.split()
+            sequence = self.replaceWithSignatures(words)
+            tags_sequence = self.viterbiAlgorithm(sequence)
             self.getOutputSequence(input, tags_sequence)
         self.writeOutputsToFile(greedy_output_file)
-        self.check()
         print(time.time()-a)
+        self.check()
 
 hmmTagger = HMMTag()
 hmmTagger.runTagger()

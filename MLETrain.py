@@ -24,7 +24,6 @@ class MLETrain:
         lines = []
         for line in content:
             new_line = "START/START START/START " + line + " END/END"
-            #new_line = "START/START START/START " + line + " END/END END/END"
             lines.append(new_line)
         return lines
 
@@ -43,19 +42,26 @@ class MLETrain:
         names = vec.get_feature_names()
         return dict(zip(names, values))
 
-    def getEmissions(self, train_data):
-        vec = CountVectorizer(lowercase=False, token_pattern=r"\S+", min_df=5)
+    def getEmissions(self, train_data, token_pattern=r"\S+"):
+        vec = CountVectorizer(lowercase=False, token_pattern=token_pattern, min_df=2)
         values = vec.fit_transform(train_data).sum(axis=0).A1
         names = vec.get_feature_names()
         names = [s.replace('/', ' ') for s in names]
         return dict(zip(names, values))
+
+    def replaceWithSignatures(self, train_data):
+        signatures = Language.getSignatures()
+        sig_dict = {}
+        for signature in signatures:
+            print(self.getEmissions(train_data, signatures[signature]))
 
     def estimateMLE(self):
         data_file, q_file, e_file = self.readParameters(VALID_PARAMETERS_NUMBER)
         train_data = self.readTaggedCorpus(data_file)
         self.transitions = self.getTransitions(train_data)
         self.emissions = self.getEmissions(train_data)
-        self.emissions = Language.handleSignatureWords(self.emissions.copy())
+        self.emissions.update(Language.aaddSignatureWords(self.emissions))
+        self.emissions.update(Language.addRareWords(self.emissions))
         self.writeDictToFile(q_file, self.transitions)
         self.writeDictToFile(e_file, self.emissions)
 

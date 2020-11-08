@@ -29,6 +29,77 @@ def getOpenClassPOS():
             'ADVERBS': ['RBS', 'RBR', 'RB']}
 
 
+def getSignatures():
+    signatures_regex = {'^VERBS': r'[^ ]*(re|dis|over|mis|out|ed|es|s|ing|en|ise)[^ ]*',
+                        '^NOUNS': r'[^ ]*(co|sub|ment|ion|ship)[^ ]*',
+                        '^ADJ': r'[^ ]*(ful|ble|al)[^ ]*',
+                        '^ADV': r'[^ ]*(ly|wise|wards)[^ ]*'}
+    return signatures_regex
+
+def replaceRareWords(word):
+    if word.startswith('il'):
+        return 'PREFIX_il'
+    if word.startswith('ir'):
+        return 'PREFIX_ir'
+    if word.startswith('re'):
+        return 'PREFIX_re'
+    if word.startswith('dis'):
+        return 'PREFIX_dis'
+    if word.startswith('mis'):
+        return 'PREFIX_mis'
+    if word.endswith('ing'):
+        return 'SUFFIX_ing'
+    if word.endswith('es'):
+        return 'SUFFIX_es'
+    if word.endswith('ise'):
+        return 'SUFFIX_ise'
+    if word.endswith('ment'):
+        return 'SUFFIX_ment'
+    if word.endswith('ion'):
+        return 'SUFFIX_ion'
+    if word.endswith('al'):
+        return 'SUFFIX_al'
+    if word.endswith('ful'):
+        return 'SUFFIX_ful'
+    if word.endswith('ly'):
+        return 'SUFFIX_ly'
+    if word.endswith('ble'):
+        return 'SUFFIX_ble'
+    return 'RARE_rare'
+
+
+def commonSignatures():
+    signatures = {'SUFFIX': ['ing', 's', 'es', 'en', 'ise', 'ed', 'ment', 'ion', 'ship',
+                                       'ful', 'ble', 'al', 'ly',  'wise', 'wards'],
+                          'PREFIX': ['re', 'dis', 'over', 'mis', 'out', 'co', 'sub', 'ir', 'il']}
+    return signatures
+
+
+def aaddSignatureWords(emissions):
+    signatures = commonSignatures()
+    signature_words = {}
+    for group in signatures:
+        for k in emissions:
+            for sig in signatures[group]:
+                if sig in k.split()[0]:
+                    entry = "".join(['^', " ".join([("_".join([group, sig])), k.split()[-1]])])
+                    if entry not in signature_words:
+                        signature_words[entry] = 0
+                    signature_words[entry] += emissions[k]
+    return signature_words
+
+
+def addRareWords(emissions):
+    rare_words = {}
+    for k in emissions:
+        if emissions[k] <= 5:
+            entry = "".join(['^', " ".join(['RARE_rare', k.split()[-1]])])
+            if entry not in rare_words:
+                rare_words[entry] = 0
+            rare_words[entry] += emissions[k]
+    return rare_words
+
+
 def addSignatureWords(emissions, sigs, sign, strFunc):
     signature_words = {}
     for sig in sigs:
