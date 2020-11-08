@@ -2,9 +2,7 @@
 # 1. when doing t/sum in getQ, sum of all transitions or only single transitions?
 # 2. upper lower case matters? start sentence
 # 3. every word has to be labeled in its turn
-
-import numpy as np
-#import string
+import string
 
 def getCloseClassPOS(emissions):
     POS = {}
@@ -37,6 +35,12 @@ def getSignatures():
     return signatures_regex
 
 def replaceRareWords(word):
+    if word.startswith('in'):
+        return 'PREFIX_in'
+    if word.startswith('im'):
+        return 'PREFIX_im'
+    if word.startswith('un'):
+        return 'PREFIX_un'
     if word.startswith('il'):
         return 'PREFIX_il'
     if word.startswith('ir'):
@@ -49,12 +53,20 @@ def replaceRareWords(word):
         return 'PREFIX_mis'
     if word.endswith('ing'):
         return 'SUFFIX_ing'
+    if word.endswith('ed'):
+        return 'SUFFIX_ed'
+    if word.endswith('s'):
+        return 'SUFFIX_s'
     if word.endswith('es'):
         return 'SUFFIX_es'
+    if word.endswith('en'):
+        return 'SUFFIX_en'
     if word.endswith('ise'):
         return 'SUFFIX_ise'
     if word.endswith('ment'):
         return 'SUFFIX_ment'
+    if word.endswith('ship'):
+        return 'SUFFIX_ship'
     if word.endswith('ion'):
         return 'SUFFIX_ion'
     if word.endswith('al'):
@@ -65,17 +77,34 @@ def replaceRareWords(word):
         return 'SUFFIX_ly'
     if word.endswith('ble'):
         return 'SUFFIX_ble'
+    if word.endswith('wards'):
+        return 'SUFFIX_wards'
+    if any(str.isdigit(c) for c in word):
+        return 'NUMBERS_numbers'
+    '''
+    if startCapitalLower(word):
+        return 'CAPITAL_low'
+    '''
     return 'RARE_rare'
+
+
+def startCapitalLower(w):
+    if not w[0].isupper():
+        return False
+    for c in w[1:]:
+        if not c.islower():
+            return False
+    return True
 
 
 def commonSignatures():
     signatures = {'SUFFIX': ['ing', 's', 'es', 'en', 'ise', 'ed', 'ment', 'ion', 'ship',
-                                       'ful', 'ble', 'al', 'ly',  'wise', 'wards'],
-                          'PREFIX': ['re', 'dis', 'over', 'mis', 'out', 'co', 'sub', 'ir', 'il']}
+                                       'ful', 'ble', 'al', 'ly', 'wards'],
+                          'PREFIX': ['re', 'dis', 'mis', 'out', 'co', 'sub', 'ir', 'il', 'im', 'in', 'un']}
     return signatures
 
 
-def aaddSignatureWords(emissions):
+def addSignatureWords(emissions):
     signatures = commonSignatures()
     signature_words = {}
     for group in signatures:
@@ -86,6 +115,22 @@ def aaddSignatureWords(emissions):
                     if entry not in signature_words:
                         signature_words[entry] = 0
                     signature_words[entry] += emissions[k]
+    for k in emissions:
+        '''
+        if startCapitalLower(k.split()[0]):
+            entry = "".join(['^', " ".join(['CAPITAL_low', k.split()[-1]])])
+            if entry not in signature_words:
+                signature_words[entry] = 0
+            signature_words[entry] += emissions[k]
+            continue
+        '''
+
+        if any(str.isdigit(c) for c in k.split()[0]):
+            entry = "".join(['^', " ".join(['NUMBERS_numbers', k.split()[-1]])])
+            if entry not in signature_words:
+                signature_words[entry] = 0
+            signature_words[entry] += emissions[k]
+            continue
     return signature_words
 
 
@@ -98,52 +143,5 @@ def addRareWords(emissions):
                 rare_words[entry] = 0
             rare_words[entry] += emissions[k]
     return rare_words
-
-
-def addSignatureWords(emissions, sigs, sign, strFunc):
-    signature_words = {}
-    for sig in sigs:
-        for k in emissions:
-            if strFunc(k.split()[0], sig):
-                entry = ''.join(['^', ' '.join([''.join([sign, sig]), k.split()[-1]])])
-                if entry not in signature_words:
-                    signature_words[entry] = 0
-                signature_words[entry] += emissions[k]
-    for sig_word in signature_words:
-        emissions[sig_word] = signature_words[sig_word]
-    return emissions
-
-
-def captialLower(emissions):
-    signature_words = {}
-    for k in emissions:
-        if startWithCapitalLower(k.split()[0]):
-            entry = ''.join(['^', ' '.join([''.join(['^', 'Aa']), k.split()[-1]])])
-            if entry not in signature_words:
-                signature_words[entry] = 0
-            signature_words[entry] += emissions[k]
-    for sig_word in signature_words:
-        emissions[sig_word] = signature_words[sig_word]
-    return emissions
-
-
-def handleSignatureWords(emissions):
-    numbers = [str(i) for i in np.arange(10)]
-    prefixes = ['dis', 're', 'un', 'ir', 'in', 'im', 'il']
-    suffixes = ['ed', 'ing', 's', 'es', 'ly']
-    sig_kinds = [prefixes, suffixes, numbers]
-    sig_signs = ['^', '~', '^']
-    funcs = [str.startswith, str.endswith, str.startswith]
-    for sigs, sign, func in zip(sig_kinds, sig_signs, funcs):
-        emissions = addSignatureWords(emissions, sigs, sign, func)
-    emissions = captialLower(emissions)
-    return emissions
-
-
-def startWithCapitalLower(word):
-    if len(word) > 1 and str(word[0]).isupper() and str(word[1]).islower():
-        return True
-    return False
-
 
 

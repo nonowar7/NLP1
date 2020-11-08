@@ -1,8 +1,6 @@
 from sklearn.feature_extraction.text import CountVectorizer
 import sys
 import Language
-import numpy as np
-import string
 
 VALID_PARAMETERS_NUMBER = 4
 
@@ -60,7 +58,7 @@ class MLETrain:
         train_data = self.readTaggedCorpus(data_file)
         self.transitions = self.getTransitions(train_data)
         self.emissions = self.getEmissions(train_data)
-        self.emissions.update(Language.aaddSignatureWords(self.emissions))
+        self.emissions.update(Language.addSignatureWords(self.emissions))
         self.emissions.update(Language.addRareWords(self.emissions))
         self.writeDictToFile(q_file, self.transitions)
         self.writeDictToFile(e_file, self.emissions)

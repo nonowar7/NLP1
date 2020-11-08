@@ -1,7 +1,5 @@
 import sys
-import numpy as np
 import math
-import itertools
 import Language
 import time
 VALID_PARAMETERS_NUMBER = 6
