@@ -96,6 +96,7 @@ class GreedyTag:
     def getUnknownScore(self, w, t):
         w = w.split('_UNK_')[-1]
         w_t = " ".join([w, t])
+        '''
         for pattern in self.end_signatures:
             if w_t.endswith(pattern):
                 return self.end_signatures.get(pattern, 0) / self.transitions[t]
@@ -106,6 +107,7 @@ class GreedyTag:
         if Language.startWithCapitalLower(w):
             entry = " ".join(['Aa', t])
             return self.start_signatures.get(entry, 0) / self.transitions[t]
+        '''
         return sys.float_info.epsilon
 
     def greedyAlgorithm(self, sequence):
@@ -149,7 +151,7 @@ class GreedyTag:
         self.getSignaturesAndUnknown()
         self.getAllTags()
         self.inputs = self.readInputFile(file_name)
-        for input in self.inputs:
+        for i, input in enumerate(self.inputs):
             tags_sequence = self.greedyAlgorithm(input)
             self.getOutputSequence(input, tags_sequence)
         self.writeOutputsToFile(greedy_output_file)

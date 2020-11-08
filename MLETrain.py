@@ -23,7 +23,8 @@ class MLETrain:
             content = f.read().splitlines()
         lines = []
         for line in content:
-            new_line = "START/START START/START " + line + " END/END END/END"
+            new_line = "START/START START/START " + line + " END/END"
+            #new_line = "START/START START/START " + line + " END/END END/END"
             lines.append(new_line)
         return lines
 
