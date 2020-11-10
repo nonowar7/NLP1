@@ -27,7 +27,7 @@ class GreedyTag:
             content = f.read().splitlines()
         lines = []
         for line in content:
-            new_line = "START START " + line + " END END"
+            new_line = "STARTword STARTword " + line + " ENDword ENDword"
             lines.append(new_line)
         return lines
 
@@ -96,24 +96,12 @@ class GreedyTag:
     def getUnknownScore(self, w, t):
         w = w.split('_UNK_')[-1]
         w_t = " ".join([w, t])
-        '''
-        for pattern in self.end_signatures:
-            if w_t.endswith(pattern):
-                return self.end_signatures.get(pattern, 0) / self.transitions[t]
-        for pattern in self.start_signatures:
-            only_pattern, only_tag = pattern.split()[0], pattern.split()[-1]
-            if w_t.startswith(only_pattern) and w_t.endswith(only_tag):
-                return self.start_signatures.get(pattern, 0) / self.transitions[t]
-        if Language.startWithCapitalLower(w):
-            entry = " ".join(['Aa', t])
-            return self.start_signatures.get(entry, 0) / self.transitions[t]
-        '''
         return sys.float_info.epsilon
 
     def greedyAlgorithm(self, sequence):
         tags_sequence = []
         words = sequence.split()
-        prev_tag, prev_prev_tag = 'START', 'START'
+        prev_tag, prev_prev_tag = 'STARTtag', 'STARTtag'
         for i, word in enumerate(words):
             prob_i = 0
             tag_i = None

@@ -21,7 +21,7 @@ class MLETrain:
             content = f.read().splitlines()
         lines = []
         for line in content:
-            new_line = "START/START START/START " + line + " END/END"
+            new_line = "STARTword/STARTtag STARTword/STARTtag " + line + " ENDword/ENDtag"
             lines.append(new_line)
         return lines
 
@@ -41,7 +41,7 @@ class MLETrain:
         return dict(zip(names, values))
 
     def getEmissions(self, train_data, token_pattern=r"\S+"):
-        vec = CountVectorizer(lowercase=False, token_pattern=token_pattern, min_df=2)
+        vec = CountVectorizer(lowercase=False, token_pattern=token_pattern, min_df=1)
         values = vec.fit_transform(train_data).sum(axis=0).A1
         names = vec.get_feature_names()
         names = [s.replace('/', ' ') for s in names]
@@ -62,7 +62,6 @@ class MLETrain:
         self.emissions.update(Language.addRareWords(self.emissions))
         self.writeDictToFile(q_file, self.transitions)
         self.writeDictToFile(e_file, self.emissions)
-
 
 mle = MLETrain()
 mle.estimateMLE()

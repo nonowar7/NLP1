@@ -16,37 +16,18 @@ def getCloseClassPOS(emissions):
             if word in group and emissions[entry] > 50:
                 if tag not in POS:
                     POS[tag] = 0
-
     return POS
 
-def getOpenClassPOS():
-    # verbs, noun, adjectives, adverbs
-    return {'NOUNS': ['NNS', 'NNP', 'NNPS', 'NN'],
-            'VERBS': ['VBZ', 'VBP', 'VBN', 'VBG', 'VBD', 'VB'],
-            'ADJECTIVES': ['JJR', 'JJS', 'JJ'],
-            'ADVERBS': ['RBS', 'RBR', 'RB']}
-
-
-def getSignatures():
-    signatures_regex = {'^VERBS': r'[^ ]*(re|dis|over|mis|out|ed|es|s|ing|en|ise)[^ ]*',
-                        '^NOUNS': r'[^ ]*(co|sub|ment|ion|ship)[^ ]*',
-                        '^ADJ': r'[^ ]*(ful|ble|al)[^ ]*',
-                        '^ADV': r'[^ ]*(ly|wise|wards)[^ ]*'}
-    return signatures_regex
 
 def replaceRareWords(word):
     if word.startswith('in'):
         return 'PREFIX_in'
-    if word.startswith('im'):
-        return 'PREFIX_im'
     if word.startswith('un'):
         return 'PREFIX_un'
     if word.startswith('il'):
         return 'PREFIX_il'
     if word.startswith('ir'):
         return 'PREFIX_ir'
-    if word.startswith('re'):
-        return 'PREFIX_re'
     if word.startswith('dis'):
         return 'PREFIX_dis'
     if word.startswith('mis'):
@@ -57,18 +38,22 @@ def replaceRareWords(word):
         return 'SUFFIX_ed'
     if word.endswith('s'):
         return 'SUFFIX_s'
+    if word.endswith("'s"):
+        return "SUFFIX_'s"
     if word.endswith('es'):
         return 'SUFFIX_es'
     if word.endswith('en'):
         return 'SUFFIX_en'
     if word.endswith('ise'):
         return 'SUFFIX_ise'
-    if word.endswith('ment'):
-        return 'SUFFIX_ment'
+    if word.endswith('ness'):
+        return 'SUFFIX_ness'
     if word.endswith('ship'):
         return 'SUFFIX_ship'
-    if word.endswith('ion'):
-        return 'SUFFIX_ion'
+    if word.endswith('ance'):
+        return 'SUFFIX_ance'
+    if word.endswith('ence'):
+        return 'SUFFIX_ence'
     if word.endswith('al'):
         return 'SUFFIX_al'
     if word.endswith('ful'):
@@ -79,28 +64,44 @@ def replaceRareWords(word):
         return 'SUFFIX_ble'
     if word.endswith('wards'):
         return 'SUFFIX_wards'
+    if word.endswith('ious'):
+        return 'SUFFIX_ious'
+    if word.endswith('er'):
+        return 'SUFFIX_er'
+    if word.isupper():
+        return 'CAPITAL_captial'
+    if hyphenAdj(word):
+        return 'ADJ_-'
     if any(str.isdigit(c) for c in word):
         return 'NUMBERS_numbers'
-    '''
-    if startCapitalLower(word):
-        return 'CAPITAL_low'
-    '''
+    if endsWithDot(word):
+        return 'DOT_dot'
+    if isLong(word):
+        return 'LONG_long'
     return 'RARE_rare'
 
+def endsWithDot(w):
+    if len(w) > 1 and w[-1] == '.':
+        return True
+    return False
 
-def startCapitalLower(w):
-    if not w[0].isupper():
-        return False
-    for c in w[1:]:
-        if not c.islower():
-            return False
-    return True
+def isLong(w):
+    if len(w)>12:
+        return True
+    return False
+
+
+def hyphenAdj(w):
+    if '-' in w and '--' not in w and len(w) > 5 and (any(str.isdigit(c) for c in w) or any(str.isalpha(c) for c in w)):
+        return True
+    return False
 
 
 def commonSignatures():
-    signatures = {'SUFFIX': ['ing', 's', 'es', 'en', 'ise', 'ed', 'ment', 'ion', 'ship',
-                                       'ful', 'ble', 'al', 'ly', 'wards'],
-                          'PREFIX': ['re', 'dis', 'mis', 'out', 'co', 'sub', 'ir', 'il', 'im', 'in', 'un']}
+    signatures = {'SUFFIX': ['ing',"'s", 's', 'es', 'en', 'ise', 'ed', 'ship', 'ness', 'ence', 'ance',
+                                       'ful', 'ble', 'al', 'ly', 'wards', 'ious', 'er'],
+                  'PREFIX': ['dis', 'mis', 'ir', 'il', 'in', 'un']
+                          }
     return signatures
 
 
@@ -116,28 +117,39 @@ def addSignatureWords(emissions):
                         signature_words[entry] = 0
                     signature_words[entry] += emissions[k]
     for k in emissions:
-        '''
-        if startCapitalLower(k.split()[0]):
-            entry = "".join(['^', " ".join(['CAPITAL_low', k.split()[-1]])])
+        split_k = k.split()
+        if any(str.isdigit(c) for c in split_k[0]) and not any(str.isalpha(c) for c in split_k[0]):
+            entry = "".join(['^', " ".join(['NUMBERS_numbers', split_k[-1]])])
             if entry not in signature_words:
                 signature_words[entry] = 0
             signature_words[entry] += emissions[k]
-            continue
-        '''
-
-        if any(str.isdigit(c) for c in k.split()[0]):
-            entry = "".join(['^', " ".join(['NUMBERS_numbers', k.split()[-1]])])
+        if hyphenAdj(split_k[0]):
+            entry = "".join(['^', " ".join(['ADJ_-', split_k[-1]])])
             if entry not in signature_words:
                 signature_words[entry] = 0
             signature_words[entry] += emissions[k]
-            continue
+        if split_k[0].isupper():
+            entry = "".join(['^', " ".join(['CAPITAL_capital', split_k[-1]])])
+            if entry not in signature_words:
+                signature_words[entry] = 0
+            signature_words[entry] += emissions[k]
+        if isLong(split_k[0]):
+            entry = "".join(['^', " ".join(['LONG_long', split_k[-1]])])
+            if entry not in signature_words:
+                signature_words[entry] = 0
+            signature_words[entry] += emissions[k]
+        if endsWithDot(split_k[0]):
+            entry = "".join(['^', " ".join(['DOT_dot', split_k[-1]])])
+            if entry not in signature_words:
+                signature_words[entry] = 0
+            signature_words[entry] += emissions[k]
     return signature_words
 
 
 def addRareWords(emissions):
     rare_words = {}
     for k in emissions:
-        if emissions[k] <= 5:
+        if emissions[k] <= 3:
             entry = "".join(['^', " ".join(['RARE_rare', k.split()[-1]])])
             if entry not in rare_words:
                 rare_words[entry] = 0
