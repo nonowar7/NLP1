@@ -49,7 +49,6 @@ class MLETrain:
 
     def replaceWithSignatures(self, train_data):
         signatures = Language.getSignatures()
-        sig_dict = {}
         for signature in signatures:
             print(self.getEmissions(train_data, signatures[signature]))
 

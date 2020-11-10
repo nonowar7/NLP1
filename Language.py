@@ -1,23 +1,3 @@
-###
-# 1. when doing t/sum in getQ, sum of all transitions or only single transitions?
-# 2. upper lower case matters? start sentence
-# 3. every word has to be labeled in its turn
-import string
-
-def getCloseClassPOS(emissions):
-    POS = {}
-    prepositions = ["in", "to", "for", "In"]
-    conjunctions = ["and", "or", "but"]
-    determiners = ["the", "a", "an"]
-    close_groups = [prepositions, conjunctions, determiners]
-    for entry in emissions:
-        word, tag = entry.split()[0], entry.split()[-1]
-        for group in close_groups:
-            if word in group and emissions[entry] > 50:
-                if tag not in POS:
-                    POS[tag] = 0
-    return POS
-
 
 def replaceRareWords(word):
     if word.startswith('in'):
@@ -80,10 +60,12 @@ def replaceRareWords(word):
         return 'LONG_long'
     return 'RARE_rare'
 
+
 def endsWithDot(w):
     if len(w) > 1 and w[-1] == '.':
         return True
     return False
+
 
 def isLong(w):
     if len(w)>12:
@@ -100,8 +82,7 @@ def hyphenAdj(w):
 def commonSignatures():
     signatures = {'SUFFIX': ['ing',"'s", 's', 'es', 'en', 'ise', 'ed', 'ship', 'ness', 'ence', 'ance',
                                        'ful', 'ble', 'al', 'ly', 'wards', 'ious', 'er'],
-                  'PREFIX': ['dis', 'mis', 'ir', 'il', 'in', 'un']
-                          }
+                  'PREFIX': ['dis', 'mis', 'ir', 'il', 'in', 'un']}
     return signatures
 
 

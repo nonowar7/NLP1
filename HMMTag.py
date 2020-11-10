@@ -3,6 +3,7 @@ import math
 import Language
 import time
 VALID_PARAMETERS_NUMBER = 6
+
 class HMMTag:
     def __init__(self):
         self.emissions = {}
@@ -10,18 +11,10 @@ class HMMTag:
         self.signatures = {}
         self.emissions_prob = {}
         self.transitions_prob = {}
-        self.patterns_prob = {}
-        self.unallowedTagsSequences = {}
-        self.rare_words = {}
-        self.knownWords = {}
+        self.known_words = {}
         self.all_tags = {}
         self.inputs = []
         self.outputs = []
-        self.close_group = {}
-        self.count_replace = {}
-        self.training_close_group_words = {"in":0, "to":0, "for":0, "and":0, "or":0,
-                                           "but":0, "the":0, "a":0, "an":0, "of":0, ".":0, ",":0,
-                                           "is":0, "was":0, "are":0, "were":0}
 
     def readParameters(self, num_param):
         if len(sys.argv) != num_param:
@@ -58,10 +51,11 @@ class HMMTag:
     def getSignaturesAndUnknown(self):
         for entry in self.emissions:
             if not entry.startswith('^'):
-                word, tag = entry.split()[0], entry.split()[-1]
-                if word not in self.knownWords:
-                    self.knownWords[word] = []
-                self.knownWords[word].append(tag)
+                ent = entry.split()
+                word, tag = ent[0], ent[-1]
+                if word not in self.known_words:
+                    self.known_words[word] = []
+                self.known_words[word].append(tag)
             else:
                 self.signatures[entry[1:]] = self.emissions[entry]
 
@@ -76,7 +70,7 @@ class HMMTag:
 
     def calculateKnownProbabilities(self, lambdas):
         for t in self.all_tags:
-            for w in self.knownWords:
+            for w in self.known_words:
                 w_t = (w, t)
                 self.emissions_prob[w_t] = self.emissions.get(" ".join([w, t]), 0) / (self.transitions[t])
         for t1 in self.all_tags:
@@ -105,22 +99,14 @@ class HMMTag:
     def possibleTags(self, i, words):
         if i <= 0:
             return ['STARTtag']
-        if len(words) >= 3 and words[i-1] in self.knownWords:
-            return self.knownWords[words[i-1]]
+        if len(words) >= 3 and words[i-1] in self.known_words:
+            return self.known_words[words[i-1]]
         if 'RARE_rare' == words[i-1]:
             return ['NNP', 'NN', 'JJ', 'VB']
         d = self.all_tags.copy()
         d.pop("STARTtag")
         return d
 
-    def ungrammaticalTagsSequences(self):
-        self.close_group = Language.getCloseClassPOS(self.emissions)
-        tags = self.all_tags.copy()
-        tags.pop('STARTtag')
-        for tag in tags:
-            for prev_tag in tags:
-                if prev_tag == tag and tag in self.close_group:
-                    self.unallowedTagsSequences[(prev_tag, tag)] = 1
 
     def initializeViterbiDicts(self):
         P = {(0, 'STARTtag', 'STARTtag'): 0}
@@ -172,60 +158,24 @@ class HMMTag:
         return output
 
     def check(self):
-        mistakes = {}
-        corrects = {}
         with open('ass1-tagger-dev', 'r', encoding="utf8") as f:
             content = f.read().splitlines()
         good, count = 0, 0
-        check = {}
         for correct_line, predicted_line in zip(content, self.outputs):
             correct_tokens, predicted_tokens = correct_line.split(), predicted_line.split()
             for correct_token, predicted_token in zip(correct_tokens, predicted_tokens):
-                for a in self.rare_words:
-                    if correct_token.split('/')[0] == a:
-                        if correct_token.split('/')[-1] not in check:
-                            check[correct_token.split('/')[-1]] = []
-                        check[correct_token.split('/')[-1]].append(a)
                 if correct_token == predicted_token:
-                    TOK = correct_token
-                    if TOK not in corrects:
-                        corrects[TOK] = 0
-                    corrects[TOK] += 1
                     good += 1
-                else:
-                    TOK = (correct_token, predicted_token)
-                    if TOK not in mistakes:
-                        mistakes[TOK] = 0
-                    mistakes[TOK] += 1
                 count += 1
-        '''
-        for mistake in mistakes:
-            correct, mis = mistake
-            if mistakes[mistake] > 5:
-                print(mistake)
-                print(mistakes[mistake])
-                print(corrects.get(correct,0))
-        '''
         print(good/count)
-        '''
-        for x in check:
-            print(x)
-            print(len(check[x]))
-        '''
+
 
     def replaceWithSignatures(self, words):
         sequence = []
         for i, word in enumerate(words):
-            if word not in self.knownWords:
+            if word not in self.known_words:
                 sym = Language.replaceRareWords(word)
-                if sym not in self.count_replace:
-                    self.count_replace[sym] = 0
-                self.count_replace[sym] += 1
                 sequence.append(sym)
-                if sym == 'RARE_rare':
-                    if word not in self.rare_words:
-                        self.rare_words[word] = 0
-                    self.rare_words[word] += 1
             else:
                 sequence.append(word)
         return sequence
@@ -242,7 +192,6 @@ class HMMTag:
             self.transitions = hmmTagger.readEstimates(q_file)
             self.getSignaturesAndUnknown()
             self.getAllTags()
-            self.ungrammaticalTagsSequences()
             self.calculateKnownProbabilities(_lambdas)
             self.inputs = self.readInputFile(file_name)
             for i , input in enumerate(self.inputs):
@@ -255,7 +204,6 @@ class HMMTag:
             print(time.time()-a)
             print(_lambdas)
             self.check()
-            print(self.count_replace)
 
 hmmTagger = HMMTag()
 hmmTagger.runTagger()
