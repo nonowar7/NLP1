@@ -181,9 +181,6 @@ class HMMTag:
         return sequence
 
     def runTagger(self):
-        lambdas = [[0.8, 0.19, 0.01]]
-        lambdas = [[0.95, 0.04, 0.01]]
-        lambdas = [[0.97, 0.02, 0.01]]
         lambdas = [[0.9, 0.09, 0.01]]
         for _lambdas in lambdas:
             a = time.time()

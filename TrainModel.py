@@ -27,7 +27,6 @@ class TrainModel:
         return content
 
     def getFeaturesAndTags(self, features_input):
-        # PRP word-2=! word-1='' word0=he word1=says word2=. tag-1='' tag-2tag-1=.,''
         X, Y = [], []
         for line in features_input:
             split_arr = line.split()
@@ -66,7 +65,6 @@ class TrainModel:
             for batch in batches(range(rows), 20000):
                 count += 1
                 clf.partial_fit(X[batch[0]:batch[-1]+1], Y[batch[0]:batch[-1]+1], np.unique(Y))
-                #clf.partial_fit(shuffledX[batch[0]:batch[-1] + 1], shuffledY[batch[0]:batch[-1] + 1], np.unique(Y))
         return clf
 
     def saveModelToFile(self, model, file_name):

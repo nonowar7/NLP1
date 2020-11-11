@@ -1,4 +1,5 @@
-from ExtractFeatures import extract
+from sklearn.feature_extraction.text import CountVectorizer
+from ExtractFeatures import ExtractFeatures
 import sys
 import time
 import pickle
@@ -6,7 +7,7 @@ VALID_PARAMETERS_NUMBER = 5
 
 class FeaturesTagger:
     def __init__(self):
-        pass
+        self.num_rare_word = 5
 
     def readParameters(self, num_param):
         if len(sys.argv) != num_param:
@@ -37,19 +38,25 @@ class FeaturesTagger:
 
     def getOutputSequence(self, input, tags_sequence, outputs):
         output = ""
-        for word, tag in zip(input.split()[2:len(input.split())-1], tags_sequence):
+        for word, tag in zip(input.split()[2:len(input.split())], tags_sequence):
             output = " ".join([output, "/".join([word, tag])])
         outputs.append(output[1:])
         return outputs
 
-    def predictTagsSequence(self, tokens, model, dv):
+    def getWordsCount(self, train_data):
+        vec = CountVectorizer(lowercase=False, ngram_range=(1, 1), token_pattern=r"\S+", min_df=self.num_rare_word)
+        values = vec.fit_transform(train_data).sum(axis=0).A1
+        names = vec.get_feature_names()
+        return dict(zip(names, values))
+
+    def predictTagsSequence(self, tokens, model, dv, known_words):
         prev_prev_tag, prev_tag = 'STARTtag', 'STARTtag'
         tags = []
         for i, token in enumerate(tokens[2:len(tokens)-2]):
-            features = extract(tokens, i+2, prev_tag, prev_prev_tag)
+            rare_word = True if token not in known_words else False
+            features = ExtractFeatures().extract(tokens, i+2, prev_prev_tag, prev_tag, rare_word).split()
             features_dict = {}
-            features_list = features.split()
-            for f_v in features_list:
+            for f_v in features:
                 f_v = f_v.split('=')
                 features_dict[f_v[0]] = f_v[1]
             x = dv.transform([features_dict])
@@ -75,6 +82,7 @@ class FeaturesTagger:
         a = time.time()
         input_file, model_file, feature_map_file, features_output_file = self.readParameters(VALID_PARAMETERS_NUMBER)
         inputs = self.readInputFile(input_file)
+        known_words = self.getWordsCount(inputs)
         model = self.loadModel(model_file)
         dv = self.loadFeatureMap(feature_map_file)
         outputs = []
@@ -82,11 +90,12 @@ class FeaturesTagger:
             if i >= 300:
                 break
             print(i)
-            tags = self.predictTagsSequence(input.split(), model, dv)
+            tags = self.predictTagsSequence(input.split(), model, dv, known_words)
             outputs = self.getOutputSequence(input, tags, outputs)
         self.writeOutputsToFile(features_output_file, outputs)
         self.check(outputs)
         print(time.time()-a)
+
 
 ft = FeaturesTagger()
 ft.runFeaturesTagger()
