@@ -1,0 +1,92 @@
+from ExtractFeatures import extract
+import sys
+import time
+import pickle
+VALID_PARAMETERS_NUMBER = 5
+
+class FeaturesTagger:
+    def __init__(self):
+        pass
+
+    def readParameters(self, num_param):
+        if len(sys.argv) != num_param:
+            print("invalid input")
+            return None
+        syst, input_file, model_file, feature_map_file, features_output_file = sys.argv
+        return input_file, model_file, feature_map_file, features_output_file
+
+    def readInputFile(self, file_name):
+        with open(file_name, 'r', encoding="utf8") as f:
+            content = f.read().splitlines()
+        lines = []
+        for line in content:
+            new_line = "STARTword STARTword " + line + " ENDword ENDword"
+            lines.append(new_line)
+        return lines
+
+    def loadFeatureMap(self, file_name):
+        return pickle.load(open(file_name, "rb"))
+
+    def loadModel(self, file_name):
+        return pickle.load(open(file_name, "rb"))
+
+    def writeOutputsToFile(self, file_name, outputs):
+        with open(file_name, 'w') as f:
+            for output in outputs:
+                f.write("%s\n" % output)
+
+    def getOutputSequence(self, input, tags_sequence, outputs):
+        output = ""
+        for word, tag in zip(input.split()[2:len(input.split())-1], tags_sequence):
+            output = " ".join([output, "/".join([word, tag])])
+        outputs.append(output[1:])
+        return outputs
+
+    def predictTagsSequence(self, tokens, model, dv):
+        prev_prev_tag, prev_tag = 'STARTtag', 'STARTtag'
+        tags = []
+        for i, token in enumerate(tokens[2:len(tokens)-2]):
+            features = extract(tokens, i+2, prev_tag, prev_prev_tag)
+            features_dict = {}
+            features_list = features.split()
+            for f_v in features_list:
+                f_v = f_v.split('=')
+                features_dict[f_v[0]] = f_v[1]
+            x = dv.transform([features_dict])
+            y = model.predict(x)[0]
+            tags.append(y)
+            prev_tag = y
+            prev_prev_tag = prev_tag
+        return tags
+
+    def check(self, outputs):
+        with open('ass1-tagger-dev', 'r', encoding="utf8") as f:
+            content = f.read().splitlines()
+        good, count = 0, 0
+        for correct_line, predicted_line in zip(content[:300], outputs):
+            correct_tokens, predicted_tokens = correct_line.split(), predicted_line.split()
+            for correct_token, predicted_token in zip(correct_tokens, predicted_tokens):
+                if correct_token == predicted_token:
+                    good += 1
+                count += 1
+        print(good/count)
+
+    def runFeaturesTagger(self):
+        a = time.time()
+        input_file, model_file, feature_map_file, features_output_file = self.readParameters(VALID_PARAMETERS_NUMBER)
+        inputs = self.readInputFile(input_file)
+        model = self.loadModel(model_file)
+        dv = self.loadFeatureMap(feature_map_file)
+        outputs = []
+        for i, input in enumerate(inputs):
+            if i >= 300:
+                break
+            print(i)
+            tags = self.predictTagsSequence(input.split(), model, dv)
+            outputs = self.getOutputSequence(input, tags, outputs)
+        self.writeOutputsToFile(features_output_file, outputs)
+        self.check(outputs)
+        print(time.time()-a)
+
+ft = FeaturesTagger()
+ft.runFeaturesTagger()

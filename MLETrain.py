@@ -47,10 +47,6 @@ class MLETrain:
         names = [s.replace('/', ' ') for s in names]
         return dict(zip(names, values))
 
-    def replaceWithSignatures(self, train_data):
-        signatures = Language.getSignatures()
-        for signature in signatures:
-            print(self.getEmissions(train_data, signatures[signature]))
 
     def estimateMLE(self):
         data_file, q_file, e_file = self.readParameters(VALID_PARAMETERS_NUMBER)
