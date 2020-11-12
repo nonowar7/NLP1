@@ -55,18 +55,18 @@ class ExtractFeatures:
                 for k in range(min(4, math.floor(len_tok/2))):
                     features = " ".join([features, '='.join([''.join(['PC_', str(k)]), token[0:k + 1]])])
                     features = " ".join([features, '='.join([''.join(['SC_', str(k)]), token[len_tok-1- k:len_tok]])])
+                if prev_tag == prev_prev_tag == 'STARTtag':
+                    features = " ".join([features, '='.join(['first_w', str(1)])])
+                if str.isupper(token[0]) and str.lower(token[1:]) == token[1:]:
+                    features = " ".join([features, '='.join(['capitalized_w', str(1)])])
+                if str.isupper(token):
+                    features = " ".join([features, '='.join(['all_capitalized_w', str(1)])])
                 if any(str.isdigit(c) for c in token):
                     features = " ".join([features, '='.join(['number', str(1)])])
-                    continue
-                if str.isupper(token):
-                    features = " ".join([features, '='.join(['uppercase', str(1)])])
-                    continue
-                if '-' in token and '--' not in token and any(str.isalpha(c) for c in token):
+                if '-' in token:
                     features = " ".join([features, '='.join(['hyphen', str(1)])])
-                    continue
-                if sent[0] != token and str.upper(token[0]) and len(token) > 8 and '-' not in token:
-                    features = " ".join([features, '='.join(['propnn', str(1)])])
-                    continue
+                if '-' in token and '--' not in token and any(str.isalpha(c) for c in token):
+                    features = " ".join([features, '='.join(['hyphen_w', str(1)])])
                 continue
             features = " ".join([features, "=".join(["".join(['w', str(j)]), token])])
         features = " ".join([features, "=".join(['pt', prev_tag])])
