@@ -6,7 +6,6 @@ import sys
 import time
 import numpy as np
 import pickle
-import random
 VALID_PARAMETERS_NUMBER = 3
 
 class TrainModel:
@@ -40,8 +39,6 @@ class TrainModel:
     def getFeaturesAsDict(self, X):
         dv = DictVectorizer(sparse=True)
         features_vec = dv.fit_transform(X)
-        #names = v.get_feature_names()
-        #features_dict = dict(zip(names, features_vec))
         return dv, features_vec
 
     def trainModel(self, X, Y):
@@ -52,10 +49,10 @@ class TrainModel:
         def batches(l, n):
             for i in range(0, len(l), n):
                 yield l[i:i + n]
-        clf = SGDClassifier(loss='log')
+        clf = SGDClassifier(loss='log', alpha=0.00001)
         rows = X.get_shape()[0]
         print(rows)
-        for i in range(3):
+        for i in range(10):
             print(i)
             X, Y = shuffle(X, Y)
             for batch in batches(range(rows), 10000):
