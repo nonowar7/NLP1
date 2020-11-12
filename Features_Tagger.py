@@ -7,7 +7,7 @@ VALID_PARAMETERS_NUMBER = 5
 
 class FeaturesTagger:
     def __init__(self):
-        self.num_rare_word = 5
+        self.num_rare_word = 2
 
     def readParameters(self, num_param):
         if len(sys.argv) != num_param:
@@ -21,7 +21,7 @@ class FeaturesTagger:
             content = f.read().splitlines()
         lines = []
         for line in content:
-            new_line = "STARTword STARTword " + line + " ENDword ENDword"
+            new_line = "STARTword STARTword " + line + " ENDword"
             lines.append(new_line)
         return lines
 
@@ -52,7 +52,7 @@ class FeaturesTagger:
     def predictTagsSequence(self, tokens, model, dv, known_words):
         prev_prev_tag, prev_tag = 'STARTtag', 'STARTtag'
         tags = []
-        for i, token in enumerate(tokens[2:len(tokens)-2]):
+        for i, token in enumerate(tokens[2:len(tokens)-1]):
             rare_word = True if token not in known_words else False
             features = ExtractFeatures().extract(tokens, i+2, prev_prev_tag, prev_tag, rare_word).split()
             features_dict = {}
@@ -70,7 +70,7 @@ class FeaturesTagger:
         with open('ass1-tagger-dev', 'r', encoding="utf8") as f:
             content = f.read().splitlines()
         good, count = 0, 0
-        for correct_line, predicted_line in zip(content[:300], outputs):
+        for correct_line, predicted_line in zip(content[:1499], outputs):
             correct_tokens, predicted_tokens = correct_line.split(), predicted_line.split()
             for correct_token, predicted_token in zip(correct_tokens, predicted_tokens):
                 if correct_token == predicted_token:
@@ -88,7 +88,7 @@ class FeaturesTagger:
         outputs = []
         for i, input in enumerate(inputs):
             print(i)
-            if i >= 300:
+            if i >= 1499:
                 break
             tags = self.predictTagsSequence(input.split(), model, dv, known_words)
             outputs = self.getOutputSequence(input, tags, outputs)

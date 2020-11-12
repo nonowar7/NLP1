@@ -7,7 +7,7 @@ NGRAM = 5
 class ExtractFeatures:
     def __init__(self):
         self.num_input_param = 3
-        self.num_rare_word = 5
+        self.num_rare_word = 2
 
     def readParameters(self):
         if len(sys.argv) != self.num_input_param:
@@ -21,7 +21,7 @@ class ExtractFeatures:
             content = f.read().splitlines()
         lines = []
         for line in content:
-            new_line = "STARTword/STARTtag STARTword/STARTtag " + line + " ENDword/ENDtag ENDword/ENDtag"
+            new_line = "STARTword/STARTtag STARTword/STARTtag " + line + " ENDword/ENDtag"
             lines.append(new_line)
         return lines
 
@@ -48,20 +48,27 @@ class ExtractFeatures:
 
     def extract(self, sent, i, prev_prev_tag, prev_tag, rare):
         features = ""
-        for j, token in enumerate(sent[i - 2:i + 3]):
+        for j, token in enumerate(sent[i:i + 2]):
             len_tok = len(token)
-            if rare and j == 2:
+            if j == 0 and rare:
+                features = " ".join([features, '='.join(['rare', str(1)])])
                 for k in range(min(4, math.floor(len_tok/2))):
                     features = " ".join([features, '='.join([''.join(['PC_', str(k)]), token[0:k + 1]])])
                     features = " ".join([features, '='.join([''.join(['SC_', str(k)]), token[len_tok-1- k:len_tok]])])
                 if any(str.isdigit(c) for c in token):
                     features = " ".join([features, '='.join(['number', str(1)])])
-                if any(str.upper(c) for c in token):
+                    continue
+                if str.isupper(token):
                     features = " ".join([features, '='.join(['uppercase', str(1)])])
-                if '-' in token:
+                    continue
+                if '-' in token and '--' not in token and any(str.isalpha(c) for c in token):
                     features = " ".join([features, '='.join(['hyphen', str(1)])])
+                    continue
+                if sent[0] != token and str.upper(token[0]) and len(token) > 8 and '-' not in token:
+                    features = " ".join([features, '='.join(['propnn', str(1)])])
+                    continue
                 continue
-            features = " ".join([features, "=".join(["".join(['w', str(j - 2)]), token])])
+            features = " ".join([features, "=".join(["".join(['w', str(j)]), token])])
         features = " ".join([features, "=".join(['pt', prev_tag])])
         features = " ".join([features, "=".join(['ppt', ",".join([prev_prev_tag, prev_tag])])])
         return features

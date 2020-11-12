@@ -49,10 +49,10 @@ class TrainModel:
         def batches(l, n):
             for i in range(0, len(l), n):
                 yield l[i:i + n]
-        clf = SGDClassifier(loss='log', alpha=0.00001)
+        clf = SGDClassifier(loss='log', alpha=0.000001)
         rows = X.get_shape()[0]
         print(rows)
-        for i in range(5):
+        for i in range(10):
             print(i)
             X, Y = shuffle(X, Y)
             for batch in batches(range(rows), 10000):
