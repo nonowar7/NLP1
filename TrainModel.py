@@ -52,10 +52,10 @@ class TrainModel:
         clf = SGDClassifier(loss='log', alpha=0.000001)
         rows = X.get_shape()[0]
         print(rows)
-        for i in range(10):
+        for i in range(100):
             print(i)
             X, Y = shuffle(X, Y)
-            for batch in batches(range(rows), 10000):
+            for batch in batches(range(rows), 100000):
                 clf.partial_fit(X[batch[0]:batch[-1]+1], Y[batch[0]:batch[-1]+1], np.unique(Y))
         return clf
 
