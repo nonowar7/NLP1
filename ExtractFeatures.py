@@ -1,6 +1,7 @@
 from sklearn.feature_extraction.text import CountVectorizer
 import sys
 import time
+import math
 NGRAM = 5
 
 class ExtractFeatures:
@@ -50,10 +51,9 @@ class ExtractFeatures:
         for j, token in enumerate(sent[i - 2:i + 3]):
             len_tok = len(token)
             if rare and j == 2:
-                if len_tok > 7:
-                    for k in range(3):
-                        features = " ".join([features, '='.join([''.join(['PC_', str(k)]), token[0:k + 1]])])
-                        features = " ".join([features, '='.join([''.join(['SC_', str(k)]), token[len_tok-1- k:len_tok]])])
+                for k in range(min(4, math.floor(len_tok/2))):
+                    features = " ".join([features, '='.join([''.join(['PC_', str(k)]), token[0:k + 1]])])
+                    features = " ".join([features, '='.join([''.join(['SC_', str(k)]), token[len_tok-1- k:len_tok]])])
                 if any(str.isdigit(c) for c in token):
                     features = " ".join([features, '='.join(['number', str(1)])])
                 if any(str.upper(c) for c in token):

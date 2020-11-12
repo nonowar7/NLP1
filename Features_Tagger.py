@@ -70,7 +70,7 @@ class FeaturesTagger:
         with open('ass1-tagger-dev', 'r', encoding="utf8") as f:
             content = f.read().splitlines()
         good, count = 0, 0
-        for correct_line, predicted_line in zip(content[:300], outputs):
+        for correct_line, predicted_line in zip(content, outputs):
             correct_tokens, predicted_tokens = correct_line.split(), predicted_line.split()
             for correct_token, predicted_token in zip(correct_tokens, predicted_tokens):
                 if correct_token == predicted_token:
@@ -87,8 +87,6 @@ class FeaturesTagger:
         dv = self.loadFeatureMap(feature_map_file)
         outputs = []
         for i, input in enumerate(inputs):
-            if i >= 300:
-                break
             print(i)
             tags = self.predictTagsSequence(input.split(), model, dv, known_words)
             outputs = self.getOutputSequence(input, tags, outputs)

@@ -1,8 +1,7 @@
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.linear_model import SGDClassifier
-from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import make_pipeline
+from sklearn.utils import shuffle
 import sys
 import time
 import numpy as np
@@ -53,17 +52,13 @@ class TrainModel:
         def batches(l, n):
             for i in range(0, len(l), n):
                 yield l[i:i + n]
-        #clf = make_pipeline(StandardScaler(), SGDClassifier(loss='log'))
         clf = SGDClassifier(loss='log')
         rows = X.get_shape()[0]
-        shuffled = list(range(rows))
-        for i in range(1):
-            #random.shuffle(shuffled)
-            #shuffledX = [X[i] for i in shuffled]
-            #shuffledY = [Y[i] for i in shuffled]
-            count = 0
-            for batch in batches(range(rows), 20000):
-                count += 1
+        print(rows)
+        for i in range(3):
+            print(i)
+            X, Y = shuffle(X, Y)
+            for batch in batches(range(rows), 10000):
                 clf.partial_fit(X[batch[0]:batch[-1]+1], Y[batch[0]:batch[-1]+1], np.unique(Y))
         return clf
 
