@@ -49,7 +49,21 @@ class TrainModel:
         def batches(l, n):
             for i in range(0, len(l), n):
                 yield l[i:i + n]
-        clf = SGDClassifier(loss='log', alpha=0.000001)
+        #clf = SGDClassifier(loss='log', alpha=0.000001, learning_rate='adaptive', eta0=0.1)
+        # 0.0000001 94.79
+        # 0.0000003 94.94
+        # 0.0000005 95.14, was able to push to 95.24 after 100 epochs of training
+        # 0.0000006 95.03
+        # 0.0000007 95.07
+        # 0.000001 95.01
+        # 0.000002 94.61
+        # 0.000005 93.64
+        # 0.00001 92.34
+        # 0.00005 86.58
+        # 0.00009 82.9
+        # 0.0001 82.4
+
+        clf = SGDClassifier(loss='log', alpha=0.0000005)
         rows = X.get_shape()[0]
         print(rows)
         for i in range(100):

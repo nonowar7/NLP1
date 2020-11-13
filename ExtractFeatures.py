@@ -2,7 +2,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 import sys
 import time
 import math
-NGRAM = 5
+NGRAM = 7
 
 class ExtractFeatures:
     def __init__(self):
@@ -21,7 +21,8 @@ class ExtractFeatures:
             content = f.read().splitlines()
         lines = []
         for line in content:
-            new_line = "STARTword/STARTtag STARTword/STARTtag " + line + " ENDword/ENDtag"
+            new_line = "STARTword/STARTtag STARTword/STARTtag STARTword/STARTtag "\
+                       + line + " ENDword/ENDtag ENDword/ENDtag ENDword/ENDtag"
             lines.append(new_line)
         return lines
 
@@ -46,7 +47,7 @@ class ExtractFeatures:
         names = vec.get_feature_names()
         return dict(zip(names, values))
 
-    def extract(self, sent, i, prev_prev_tag, prev_tag, rare):
+    def extract(self, sent, i, prev_prev_prev_tag, prev_prev_tag, prev_tag, rare):
         features = ""
         for j, token in enumerate(sent[i:i + 2]):
             len_tok = len(token)
@@ -55,7 +56,7 @@ class ExtractFeatures:
                 for k in range(min(4, math.floor(len_tok/2))):
                     features = " ".join([features, '='.join([''.join(['PC_', str(k)]), token[0:k + 1]])])
                     features = " ".join([features, '='.join([''.join(['SC_', str(k)]), token[len_tok-1- k:len_tok]])])
-                if prev_tag == prev_prev_tag == 'STARTtag':
+                if prev_tag == prev_prev_tag == prev_prev_prev_tag == 'STARTtag':
                     features = " ".join([features, '='.join(['first_w', str(1)])])
                 if str.isupper(token[0]) and str.lower(token[1:]) == token[1:]:
                     features = " ".join([features, '='.join(['capitalized_w', str(1)])])
@@ -71,6 +72,7 @@ class ExtractFeatures:
             features = " ".join([features, "=".join(["".join(['w', str(j)]), token])])
         features = " ".join([features, "=".join(['pt', prev_tag])])
         features = " ".join([features, "=".join(['ppt', ",".join([prev_prev_tag, prev_tag])])])
+        features = " ".join([features, "=".join(['pppt', ",".join([prev_prev_prev_tag, prev_prev_tag, prev_tag])])])
         return features
 
     def createFeaturesDict(self, features_count, known_words):
@@ -81,8 +83,8 @@ class ExtractFeatures:
                 print('feature string is not the right size')
                 continue
             words, tags = [x[0] for x in words_and_tags], [x[1] for x in words_and_tags]
-            rare_word = True if words[2] not in known_words else False
-            feature_str = " ".join([tags[2], self.extract(words, 2, tags[0], tags[1], rare_word)])
+            rare_word = True if words[3] not in known_words else False
+            feature_str = " ".join([tags[3], self.extract(words, 3, tags[0], tags[1], tags[2], rare_word)])
             features_list.append(feature_str)
         return features_list
 

@@ -21,7 +21,7 @@ class FeaturesTagger:
             content = f.read().splitlines()
         lines = []
         for line in content:
-            new_line = "STARTword STARTword " + line + " ENDword"
+            new_line = "STARTword STARTword STARTword " + line + " ENDword ENDword ENDword"
             lines.append(new_line)
         return lines
 
@@ -38,7 +38,7 @@ class FeaturesTagger:
 
     def getOutputSequence(self, input, tags_sequence, outputs):
         output = ""
-        for word, tag in zip(input.split()[2:len(input.split())], tags_sequence):
+        for word, tag in zip(input.split()[3:len(input.split())], tags_sequence):
             output = " ".join([output, "/".join([word, tag])])
         outputs.append(output[1:])
         return outputs
@@ -50,11 +50,11 @@ class FeaturesTagger:
         return dict(zip(names, values))
 
     def predictTagsSequence(self, tokens, model, dv, known_words):
-        prev_prev_tag, prev_tag = 'STARTtag', 'STARTtag'
+        prev_prev_prev_tag, prev_prev_tag, prev_tag = 'STARTtag', 'STARTtag', 'STARTtag'
         tags = []
-        for i, token in enumerate(tokens[2:len(tokens)-1]):
+        for i, token in enumerate(tokens[3:len(tokens)-3]):
             rare_word = True if token not in known_words else False
-            features = ExtractFeatures().extract(tokens, i+2, prev_prev_tag, prev_tag, rare_word).split()
+            features = ExtractFeatures().extract(tokens, i+3, prev_prev_prev_tag, prev_prev_tag, prev_tag, rare_word).split()
             features_dict = {}
             for f_v in features:
                 f_v = f_v.split('=')
@@ -62,8 +62,9 @@ class FeaturesTagger:
             x = dv.transform([features_dict])
             y = model.predict(x)[0]
             tags.append(y)
-            prev_tag = y
+            prev_prev_prev_tag = prev_prev_tag
             prev_prev_tag = prev_tag
+            prev_tag = y
         return tags
 
     def check(self, outputs):
