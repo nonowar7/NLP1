@@ -41,10 +41,6 @@ class TrainModel:
         features_vec = dv.fit_transform(X)
         return dv, features_vec
 
-    def trainModel(self, X, Y):
-        clf = LogisticRegression().fit(X, Y)
-        return clf
-
     def trainWithSGD(self, X, Y):
         def batches(l, n):
             for i in range(0, len(l), n):
@@ -65,9 +61,7 @@ class TrainModel:
 
         clf = SGDClassifier(loss='log', alpha=0.0000005)
         rows = X.get_shape()[0]
-        print(rows)
         for i in range(100):
-            print(i)
             X, Y = shuffle(X, Y)
             for batch in batches(range(rows), 100000):
                 clf.partial_fit(X[batch[0]:batch[-1]+1], Y[batch[0]:batch[-1]+1], np.unique(Y))
@@ -77,7 +71,7 @@ class TrainModel:
         pickle.dump(model, open(file_name, 'wb'))
 
     def saveFeaturesMapToFile(self, dv, features_map_file):
-        pickle.dump(dv, open(features_map_file ,"wb"))
+        pickle.dump(dv, open(features_map_file ,'wb'))
 
     def runTrainModel(self):
         a = time.time()

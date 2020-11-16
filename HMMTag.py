@@ -1,11 +1,12 @@
 import sys
 import math
 import Language
+import utils
 import time
 VALID_PARAMETERS_NUMBER = 6
 
 class HMMTag:
-    def __init__(self):
+    def __init__(self, lambdas):
         self.emissions = {}
         self.transitions = {}
         self.signatures = {}
@@ -15,6 +16,7 @@ class HMMTag:
         self.all_tags = {}
         self.inputs = []
         self.outputs = []
+        self.lambdas = lambdas
 
     def readParameters(self, num_param):
         if len(sys.argv) != num_param:
@@ -24,9 +26,8 @@ class HMMTag:
         return file_name, q_file, e_file, greedy_output_file, extra_file
 
     def readInputFile(self, file_name):
-        with open(file_name, 'r', encoding="utf8") as f:
-            content = f.read().splitlines()
-        return content
+        tokens, content = utils.getOnlyTokens(file_name)
+        return tokens, content
 
     def writeOutputsToFile(self, file_name):
         with open(file_name, 'w') as f:
@@ -68,7 +69,7 @@ class HMMTag:
                 self.all_tags[tags[-1]] = 0
             self.all_tags[tags[-1]] += self.transitions[entry]
 
-    def calculateKnownProbabilities(self, lambdas):
+    def calculateKnownProbabilities(self):
         for t in self.all_tags:
             for w in self.known_words:
                 w_t = (w, t)
@@ -80,9 +81,9 @@ class HMMTag:
                     first_prob = self.transitions.get(' '.join([t1, t2, t3]), 0)
                     second_prob = self.transitions.get(' '.join([t2, t3]), 0)
                     third_prob = self.transitions.get(t3, 0)
-                    self.transitions_prob[(t1, t2, t3)] = (lambdas[0] * first_prob / (second_prob + epsilon)) + \
-                           (lambdas[1] * second_prob / (third_prob + epsilon)) + \
-                           (lambdas[2] * third_prob / sum(self.all_tags.values()))
+                    self.transitions_prob[(t1, t2, t3)] = (self.lambdas[0] * first_prob / (second_prob + epsilon)) + \
+                           (self.lambdas[1] * second_prob / (third_prob + epsilon)) + \
+                           (self.lambdas[2] * third_prob / sum(self.all_tags.values()))
         for pattern in self.signatures:
             pat = pattern.split()
             self.emissions_prob[(pat[0], pat[1])] = self.signatures.get(pattern, 0) / self.transitions[pat[1]]
@@ -101,8 +102,6 @@ class HMMTag:
             return ['STARTtag']
         if len(words) >= 3 and words[i-1] in self.known_words:
             return self.known_words[words[i-1]]
-        if 'RARE_rare' == words[i-1]:
-            return ['NNP', 'NN', 'JJ', 'VB']
         d = self.all_tags.copy()
         d.pop("STARTtag")
         return d
@@ -157,11 +156,9 @@ class HMMTag:
             output[i-1] = T[(i+2, output[i], output[i+1])]
         return output
 
-    def check(self):
-        with open('ass1-tagger-dev', 'r', encoding="utf8") as f:
-            content = f.read().splitlines()
+    def accuracyEvaluation(self, golden):
         good, count = 0, 0
-        for correct_line, predicted_line in zip(content, self.outputs):
+        for correct_line, predicted_line in zip(golden, self.outputs):
             correct_tokens, predicted_tokens = correct_line.split(), predicted_line.split()
             for correct_token, predicted_token in zip(correct_tokens, predicted_tokens):
                 if correct_token == predicted_token:
@@ -174,33 +171,34 @@ class HMMTag:
         sequence = []
         for i, word in enumerate(words):
             if word not in self.known_words:
-                sym = Language.replaceRareWords(word)
+                sym = Language.replaceRareWords(word, i)
                 sequence.append(sym)
             else:
                 sequence.append(word)
         return sequence
 
     def runTagger(self):
-        lambdas = [[0.9, 0.09, 0.01]]
-        for _lambdas in lambdas:
-            a = time.time()
-            file_name, q_file, e_file, greedy_output_file, extra_file = hmmTagger.readParameters(VALID_PARAMETERS_NUMBER)
-            self.emissions = hmmTagger.readEstimates(e_file)
-            self.transitions = hmmTagger.readEstimates(q_file)
-            self.getSignaturesAndUnknown()
-            self.getAllTags()
-            self.calculateKnownProbabilities(_lambdas)
-            self.inputs = self.readInputFile(file_name)
-            for i , input in enumerate(self.inputs):
-                if len(input) == 0:
-                    continue
-                words = self.replaceWithSignatures(input.split())
-                tags_sequence = self.viterbiAlgorithm(words)
-                self.getOutputSequence(input, tags_sequence)
-            self.writeOutputsToFile(greedy_output_file)
-            print(time.time()-a)
-            print(_lambdas)
-            self.check()
+        a = time.time()
+        file_name, q_file, e_file, greedy_output_file, extra_file = hmmTagger.readParameters(VALID_PARAMETERS_NUMBER)
+        self.emissions = hmmTagger.readEstimates(e_file)
+        self.transitions = hmmTagger.readEstimates(q_file)
+        self.getSignaturesAndUnknown()
+        self.getAllTags()
+        self.calculateKnownProbabilities()
+        self.inputs, golden = self.readInputFile(file_name)
+        for i , input in enumerate(self.inputs):
+            if len(input) == 0:
+                continue
+            words = self.replaceWithSignatures(input.split())
+            tags_sequence = self.viterbiAlgorithm(words)
+            self.getOutputSequence(input, tags_sequence)
+        self.writeOutputsToFile(greedy_output_file)
+        print(time.time()-a)
+        self.accuracyEvaluation(golden)
 
-hmmTagger = HMMTag()
-hmmTagger.runTagger()
+
+lambdas = [[0.9, 0.09, 0.01]]
+for lam_values in lambdas:
+    print(lam_values)
+    hmmTagger = HMMTag(lam_values)
+    hmmTagger.runTagger()

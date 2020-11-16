@@ -1,11 +1,12 @@
 import sys
 import Language
 import time
+import utils
 import math
 VALID_PARAMETERS_NUMBER = 6
 
 class GreedyTag:
-    def __init__(self):
+    def __init__(self, lambdas):
         self.emissions = {}
         self.transitions = {}
         self.signatures = {}
@@ -15,6 +16,8 @@ class GreedyTag:
         self.all_tags = {}
         self.inputs = []
         self.outputs = []
+        self.lambdas = lambdas
+        self.tag_for_rare = []
 
     def readParameters(self, num_param):
         if len(sys.argv) != num_param:
@@ -24,13 +27,12 @@ class GreedyTag:
         return file_name, q_file, e_file, greedy_output_file, extra_file
 
     def readInputFile(self, file_name):
-        with open(file_name, 'r', encoding="utf8") as f:
-            content = f.read().splitlines()
+        tokens, content = utils.getOnlyTokens(file_name)
         lines = []
-        for line in content:
+        for line in tokens:
             new_line = "STARTword STARTword " + line + " ENDword ENDword"
             lines.append(new_line)
-        return lines
+        return lines, content
 
     def readEstimates(self, file_name):
         _dict = {}
@@ -72,7 +74,7 @@ class GreedyTag:
                 self.all_tags[tags[-1]] = 0
             self.all_tags[tags[-1]] += self.transitions[entry]
 
-    def calculateKnownProbabilities(self, lambdas):
+    def calculateKnownProbabilities(self):
         for t in self.all_tags:
             for w in self.known_words:
                 w_t = (w, t)
@@ -84,9 +86,9 @@ class GreedyTag:
                     first_prob = self.transitions.get(' '.join([t1, t2, t3]), 0)
                     second_prob = self.transitions.get(' '.join([t2, t3]), 0)
                     third_prob = self.transitions.get(t3, 0)
-                    self.transitions_prob[(t1, t2, t3)] = (lambdas[0] * first_prob / (second_prob + epsilon)) + \
-                           (lambdas[1] * second_prob / (third_prob + epsilon)) + \
-                           (lambdas[2] * third_prob / sum(self.all_tags.values()))
+                    self.transitions_prob[(t1, t2, t3)] = (self.lambdas[0] * first_prob / (second_prob + epsilon)) + \
+                           (self.lambdas[1] * second_prob / (third_prob + epsilon)) + \
+                           (self.lambdas[2] * third_prob / sum(self.all_tags.values()))
         for pattern in self.signatures:
             pat = pattern.split()
             self.emissions_prob[(pat[0], pat[1])] = self.signatures.get(pattern, 0) / self.transitions[pat[1]]
@@ -99,6 +101,16 @@ class GreedyTag:
         # since tag_list is taken from training, transitions[t] is never 0
 
 
+    def possibleTags(self, word):
+        if word in self.known_words:
+            return self.known_words[word]
+        if word == 'RARE_rare':
+            return self.tag_for_rare
+        d = self.all_tags.copy()
+        d.pop("STARTtag")
+        d.pop("ENDtag")
+        return d
+
     def greedyAlgorithm(self, words):
         tags_sequence = []
         prev_tag, prev_prev_tag = 'STARTtag', 'STARTtag'
@@ -107,23 +119,21 @@ class GreedyTag:
             tag_i = None
             if i <= 1 or i >= len(words)-2:
                 continue
-            for tag in self.all_tags:
+            tags = self.possibleTags(word)
+            for tag in tags:
                 current_prob = math.log(self.getE(word, tag)) + \
                                math.log(self.getQ(prev_prev_tag, prev_tag, tag))
                 if current_prob > prob_i:
                     prob_i = current_prob
                     tag_i = tag
-                # assign some small prob, than handle word signatures
             prev_prev_tag = prev_tag
             prev_tag = tag_i
             tags_sequence.append(tag_i)
         return tags_sequence
 
-    def check(self):
-        with open('ass1-tagger-dev', 'r', encoding="utf8") as f:
-            content = f.read().splitlines()
+    def accuracyEvaluation(self, golden):
         good, count = 0, 0
-        for correct_line, predicted_line in zip(content, self.outputs):
+        for correct_line, predicted_line in zip(golden, self.outputs):
             correct_tokens, predicted_tokens = correct_line.split(), predicted_line.split()
             for correct_token, predicted_token in zip(correct_tokens, predicted_tokens):
                 if correct_token == predicted_token:
@@ -131,39 +141,54 @@ class GreedyTag:
                 count += 1
         print(good/count)
 
-    def replaceWithSignatures(self, words):
+    def replaceWithSignatures(self, words, rare_word_counter):
         sequence = []
         for i, word in enumerate(words):
             if word not in self.known_words:
-                sym = Language.replaceRareWords(word)
+                sym = Language.replaceRareWords(word, i-2)
                 sequence.append(sym)
+                if sym not in rare_word_counter:
+                    rare_word_counter[sym] = 0
+                rare_word_counter[sym] += 1
             else:
                 sequence.append(word)
         return sequence
 
+
+    def getMostCommonTagForRare(self):
+        for signature in self.signatures:
+            entry = signature.split()
+            if entry[0] != 'RARE_rare':
+                continue
+            self.tag_for_rare.append(entry[1])
+
+
     def runTagger(self):
-        lambdas = [[0.6, 0.3, 0.1]]
-        for _lambdas in lambdas:
-            a = time.time()
-            file_name, q_file, e_file, greedy_output_file, extra_file = greedyTagger.readParameters(VALID_PARAMETERS_NUMBER)
-            self.emissions = greedyTagger.readEstimates(e_file)
-            self.transitions = greedyTagger.readEstimates(q_file)
-            self.getSignaturesAndUnknown()
-            self.getAllTags()
-            self.calculateKnownProbabilities(_lambdas)
-            self.inputs = self.readInputFile(file_name)
-            for i, input in enumerate(self.inputs):
-                if len(input) == 0:
-                    continue
-                words = self.replaceWithSignatures(input.split())
-                tags_sequence = self.greedyAlgorithm(words)
-                self.getOutputSequence(input, tags_sequence)
-            self.writeOutputsToFile(greedy_output_file)
-            print(time.time()-a)
-            print(_lambdas)
-            self.check()
+        rare_word_counter = {}
+        a = time.time()
+        file_name, q_file, e_file, greedy_output_file, extra_file = greedyTagger.readParameters(VALID_PARAMETERS_NUMBER)
+        self.emissions = greedyTagger.readEstimates(e_file)
+        self.transitions = greedyTagger.readEstimates(q_file)
+        self.getSignaturesAndUnknown()
+        self.getMostCommonTagForRare()
+        self.getAllTags()
+        self.calculateKnownProbabilities()
+        self.inputs, golden = self.readInputFile(file_name)
+        for i, input in enumerate(self.inputs):
+            if len(input) == 0:
+                continue
+            words = self.replaceWithSignatures(input.split(), rare_word_counter)
+            tags_sequence = self.greedyAlgorithm(words)
+            self.getOutputSequence(input, tags_sequence)
+        self.writeOutputsToFile(greedy_output_file)
+        print(time.time()-a)
+        self.accuracyEvaluation(golden)
 
 
-greedyTagger = GreedyTag()
-greedyTagger.runTagger()
+lambdas = [[0.01, 0.09, 0.9]]
+for lam_values in lambdas:
+    print(lam_values)
+    greedyTagger = GreedyTag(lam_values)
+    greedyTagger.runTagger()
+
 

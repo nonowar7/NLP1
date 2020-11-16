@@ -2,6 +2,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from ExtractFeatures import ExtractFeatures
 import sys
 import time
+import utils
 import pickle
 VALID_PARAMETERS_NUMBER = 5
 
@@ -17,13 +18,12 @@ class FeaturesTagger:
         return input_file, model_file, feature_map_file, features_output_file
 
     def readInputFile(self, file_name):
-        with open(file_name, 'r', encoding="utf8") as f:
-            content = f.read().splitlines()
+        tokens, content = utils.getOnlyTokens(file_name)
         lines = []
-        for line in content:
+        for line in tokens:
             new_line = "STARTword STARTword STARTword " + line + " ENDword ENDword ENDword"
             lines.append(new_line)
-        return lines
+        return lines, content
 
     def loadFeatureMap(self, file_name):
         return pickle.load(open(file_name, "rb"))
@@ -67,13 +67,14 @@ class FeaturesTagger:
             prev_tag = y
         return tags
 
-    def check(self, outputs):
-        with open('ass1-tagger-dev', 'r', encoding="utf8") as f:
-            content = f.read().splitlines()
+    def accuracyEvaluation(self, outputs, golden):
         good, count = 0, 0
-        for correct_line, predicted_line in zip(content, outputs):
+        for correct_line, predicted_line in zip(golden, outputs):
             correct_tokens, predicted_tokens = correct_line.split(), predicted_line.split()
             for correct_token, predicted_token in zip(correct_tokens, predicted_tokens):
+                # for ner accuracy evaluation
+                if correct_token.endswith('/O'):
+                    continue
                 if correct_token == predicted_token:
                     good += 1
                 count += 1
@@ -82,6 +83,7 @@ class FeaturesTagger:
     def runFeaturesTagger(self):
         a = time.time()
         input_file, model_file, feature_map_file, features_output_file = self.readParameters(VALID_PARAMETERS_NUMBER)
+        inputs, golden = self.readInputFile(input_file)
         inputs = self.readInputFile(input_file)
         known_words = self.getWordsCount(inputs)
         model = self.loadModel(model_file)
@@ -92,7 +94,7 @@ class FeaturesTagger:
             tags = self.predictTagsSequence(input.split(), model, dv, known_words)
             outputs = self.getOutputSequence(input, tags, outputs)
         self.writeOutputsToFile(features_output_file, outputs)
-        self.check(outputs)
+        self.accuracyEvaluation(outputs, golden)
         print(time.time()-a)
 
 

@@ -67,7 +67,7 @@ class ExtractFeatures:
                 if '-' in token:
                     features = " ".join([features, '='.join(['hyphen', str(1)])])
                 if '-' in token and '--' not in token and any(str.isalpha(c) for c in token):
-                    features = " ".join([features, '='.join(['hyphen_w', str(1)])])
+                    features = " ".join([features, '='.join(['hyphen_adj', str(1)])])
                 continue
             features = " ".join([features, "=".join(["".join(['w', str(j)]), token])])
         features = " ".join([features, "=".join(['pt', prev_tag])])

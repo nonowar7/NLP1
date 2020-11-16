@@ -23,7 +23,7 @@ class MLETrain:
         for line in content:
             new_line = "STARTword/STARTtag STARTword/STARTtag " + line + " ENDword/ENDtag"
             lines.append(new_line)
-        return lines
+        return lines, list(next(zip(*map(str.split, content))))
 
     def writeDictToFile(self, file_name, _dict):
         with open(file_name, 'w') as f:
@@ -50,10 +50,10 @@ class MLETrain:
 
     def estimateMLE(self):
         data_file, q_file, e_file = self.readParameters(VALID_PARAMETERS_NUMBER)
-        train_data = self.readTaggedCorpus(data_file)
+        train_data, first_words = self.readTaggedCorpus(data_file)
         self.transitions = self.getTransitions(train_data)
         self.emissions = self.getEmissions(train_data)
-        self.emissions.update(Language.addSignatureWords(self.emissions))
+        self.emissions.update(Language.addSignatureWords(self.emissions, first_words))
         self.emissions.update(Language.addRareWords(self.emissions))
         self.writeDictToFile(q_file, self.transitions)
         self.writeDictToFile(e_file, self.emissions)
