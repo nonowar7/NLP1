@@ -1,6 +1,5 @@
 from sklearn.feature_extraction.text import CountVectorizer
 import sys
-import time
 import math
 NGRAM = 7
 
@@ -40,6 +39,7 @@ class ExtractFeatures:
         values = vec.fit_transform(train_data).sum(axis=0).A1
         names = vec.get_feature_names()
         return dict(zip(names, values))
+
 
     def getFeaturesFromInput(self, train_data):
         vec = CountVectorizer(lowercase=False, ngram_range=(NGRAM, NGRAM), token_pattern=r"\S+")
@@ -89,14 +89,12 @@ class ExtractFeatures:
         return features_list
 
     def runExtractFeatures(self):
-        a = time.time()
         corpus_file, features_file = self.readParameters()
         train_data = self.readInputFile(corpus_file)
         features_count = self.getFeaturesFromInput(train_data)
         known_words = self.getWordsCount(train_data)
         features_list = self.createFeaturesDict(features_count, known_words)
         self.writeFeaturesToFile(features_list, features_file)
-        print(time.time()-a)
 
 
 def main():

@@ -12,3 +12,7 @@ def getOnlyTokens(file_name):
         lines.append(new_line[1:])
     return lines, content
 
+def writeOutputsToFile(file_name, outputs):
+    with open(file_name, 'w') as f:
+        for output in outputs:
+            f.write("%s\n" % output)

@@ -2,7 +2,6 @@ import sys
 import math
 import Language
 import utils
-import time
 VALID_PARAMETERS_NUMBER = 6
 
 class HMMTag:
@@ -138,7 +137,7 @@ class HMMTag:
                             best_tag = prev_prev_tag
                     P[(i, prev_tag, tag)] = best_prob
                     T[(i, prev_tag, tag)] = best_tag
-        output = (N) * [None]
+        output = []
         last_tag, one_before_last = None, None
         best_prob = float('-inf')
         tags = self.possibleTags(N, words)
@@ -150,10 +149,15 @@ class HMMTag:
                     best_prob = this_prob
                     last_tag = tag
                     one_before_last = prev_tag
-        output[N-1] = last_tag
-        output[N-2] = one_before_last
+
+        output.append(last_tag)
+        if N > 1:
+            output.append(one_before_last)
+        index = 0
         for i in range(N-2, 0, -1):
-            output[i-1] = T[(i+2, output[i], output[i+1])]
+            output.append(T[(i+2, output[index+1], output[index])])
+            index += 1
+        output.reverse()
         return output
 
     def accuracyEvaluation(self, golden):
@@ -161,11 +165,13 @@ class HMMTag:
         for correct_line, predicted_line in zip(golden, self.outputs):
             correct_tokens, predicted_tokens = correct_line.split(), predicted_line.split()
             for correct_token, predicted_token in zip(correct_tokens, predicted_tokens):
+                # for ner accuracy evaluation
+                if correct_token.endswith('/O'):
+                    continue
                 if correct_token == predicted_token:
                     good += 1
                 count += 1
         print(good/count)
-
 
     def replaceWithSignatures(self, words):
         sequence = []
@@ -178,7 +184,6 @@ class HMMTag:
         return sequence
 
     def runTagger(self):
-        a = time.time()
         file_name, q_file, e_file, greedy_output_file, extra_file = hmmTagger.readParameters(VALID_PARAMETERS_NUMBER)
         self.emissions = hmmTagger.readEstimates(e_file)
         self.transitions = hmmTagger.readEstimates(q_file)
@@ -193,12 +198,10 @@ class HMMTag:
             tags_sequence = self.viterbiAlgorithm(words)
             self.getOutputSequence(input, tags_sequence)
         self.writeOutputsToFile(greedy_output_file)
-        print(time.time()-a)
-        self.accuracyEvaluation(golden)
+        #self.accuracyEvaluation(golden)
 
 
 lambdas = [[0.9, 0.09, 0.01]]
 for lam_values in lambdas:
-    print(lam_values)
     hmmTagger = HMMTag(lam_values)
     hmmTagger.runTagger()

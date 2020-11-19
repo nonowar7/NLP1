@@ -1,6 +1,5 @@
 import sys
 import Language
-import time
 import utils
 import math
 VALID_PARAMETERS_NUMBER = 6
@@ -136,20 +135,20 @@ class GreedyTag:
         for correct_line, predicted_line in zip(golden, self.outputs):
             correct_tokens, predicted_tokens = correct_line.split(), predicted_line.split()
             for correct_token, predicted_token in zip(correct_tokens, predicted_tokens):
+                # for ner accuracy evaluation
+                if correct_token.endswith('/O'):
+                    continue
                 if correct_token == predicted_token:
                     good += 1
                 count += 1
         print(good/count)
 
-    def replaceWithSignatures(self, words, rare_word_counter):
+    def replaceWithSignatures(self, words):
         sequence = []
         for i, word in enumerate(words):
             if word not in self.known_words:
                 sym = Language.replaceRareWords(word, i-2)
                 sequence.append(sym)
-                if sym not in rare_word_counter:
-                    rare_word_counter[sym] = 0
-                rare_word_counter[sym] += 1
             else:
                 sequence.append(word)
         return sequence
@@ -164,8 +163,6 @@ class GreedyTag:
 
 
     def runTagger(self):
-        rare_word_counter = {}
-        a = time.time()
         file_name, q_file, e_file, greedy_output_file, extra_file = greedyTagger.readParameters(VALID_PARAMETERS_NUMBER)
         self.emissions = greedyTagger.readEstimates(e_file)
         self.transitions = greedyTagger.readEstimates(q_file)
@@ -177,17 +174,15 @@ class GreedyTag:
         for i, input in enumerate(self.inputs):
             if len(input) == 0:
                 continue
-            words = self.replaceWithSignatures(input.split(), rare_word_counter)
+            words = self.replaceWithSignatures(input.split())
             tags_sequence = self.greedyAlgorithm(words)
             self.getOutputSequence(input, tags_sequence)
         self.writeOutputsToFile(greedy_output_file)
-        print(time.time()-a)
-        self.accuracyEvaluation(golden)
+        #self.accuracyEvaluation(golden)
 
 
 lambdas = [[0.01, 0.09, 0.9]]
 for lam_values in lambdas:
-    print(lam_values)
     greedyTagger = GreedyTag(lam_values)
     greedyTagger.runTagger()
 
